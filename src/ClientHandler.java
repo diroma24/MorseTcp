@@ -22,12 +22,11 @@ public class ClientHandler implements Runnable {
             String message;
 
             while((message = in.readLine()) != null) {
+                if (message.equals("exit")) break;
+
                 String translated = translator.translateToMorse(message);
                 System.out.println("Messaged sent: " + translated);
                 out.println("Morse: " + translated);
-
-                if (message.equals("exit")) break;
-
             }
         } catch (IOException e) {
             System.err.println("Error occurred while trying to connect to client: " + e.getMessage());

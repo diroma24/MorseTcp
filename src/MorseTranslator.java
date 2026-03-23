@@ -7,9 +7,9 @@ import java.util.Map;
 
 public class MorseTranslator implements AutoCloseable {
     private static final int SAMPLE_RATE = 44100;
-    private static final int DOT_DURATION = 100;
+    private static final int FREQUENCY = 550;
+    private static final int DOT_DURATION = 120;
     private static final int DASH_DURATION = DOT_DURATION * 3;
-    private static final int FREQUENCY = 800;
 
     private static final Map<Character, String> morseMap = new HashMap<>();
 
@@ -74,45 +74,45 @@ public class MorseTranslator implements AutoCloseable {
     }
 
     public void playMorse(String morseCode) {
-        try {
-            AudioFormat af = new AudioFormat(SAMPLE_RATE, 16, 1, true, false);
-            SourceDataLine sdl = AudioSystem.getSourceDataLine(af);
+        AudioFormat af = new AudioFormat(SAMPLE_RATE, 16, 1, true, false);
+        try (SourceDataLine sdl = AudioSystem.getSourceDataLine(af)) {
             sdl.open(af);
             sdl.start();
 
             for (char c : morseCode.toCharArray()) {
                 switch (c) {
-                    case '.':
-                        playTone(sdl, DOT_DURATION);
-                        break;
-                    case '-':
-                        playTone(sdl, DASH_DURATION);
-                        break;
-                    case ' ':
-                        Thread.sleep(DOT_DURATION * 2);
-                        break;
-                    case '/':
-                        Thread.sleep(DASH_DURATION * 6);
-                        break;
+                    case '.': playTone(sdl, DOT_DURATION); break;
+                    case '-': playTone(sdl, DASH_DURATION); break;
+                    case ' ': Thread.sleep(DOT_DURATION * 2); break;
+                    case '/': Thread.sleep(DOT_DURATION * 6); break;
                 }
-                Thread.sleep(DOT_DURATION);
+                Thread.sleep(DOT_DURATION); // Espacio entre símbolos
             }
             sdl.drain();
-            sdl.stop();
-            sdl.close();
-        } catch (LineUnavailableException | InterruptedException e) {
-            System.err.println("Error reproduciendo audio: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error: " + e.getMessage());
         }
     }
 
-    private void playTone(SourceDataLine sdl,int duration){
-        int lenght = (int) (SAMPLE_RATE * duration / 1000.0);
-        byte[] buffer = new byte[lenght * 2];
+    private void playTone(SourceDataLine sdl, int duration) {
+        int length = (int) (SAMPLE_RATE * duration / 1000.0);
+        byte[] buffer = new byte[length * 2];
 
-        for(int i = 0; i < lenght; i++){
+        int envelopeSamples = (int) (SAMPLE_RATE * 0.005);
+
+        for (int i = 0; i < length; i++) {
             double angle = 2.0 * Math.PI * i * FREQUENCY / SAMPLE_RATE;
-            short amplitude = (short) (Math.sin(angle) * Short.MAX_VALUE);
+            double lfo = Math.sin(angle);
 
+            double volume = 1.0;
+            if (i < envelopeSamples) {
+                volume = (double) i / envelopeSamples;
+            }
+            else if (i > length - envelopeSamples) {
+                volume = (double) (length - i) / envelopeSamples;
+            }
+
+            short amplitude = (short) (lfo * Short.MAX_VALUE * volume * 0.8);
             buffer[2 * i] = (byte) (amplitude & 0xFF);
             buffer[2 * i + 1] = (byte) ((amplitude >> 8) & 0xFF);
         }

@@ -16,16 +16,19 @@ public class ClientHandler implements Runnable {
                 Socket socket = this.clientSocket;
                 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 PrintWriter out = new PrintWriter(socket.getOutputStream(),true);
+                MorseTranslator translator = new MorseTranslator();
         ) {
             System.out.println("Client connected.");
             String message;
 
             while((message = in.readLine()) != null) {
-                System.out.println(message);
+                System.out.println(translator.translateToMorse(message));
                 if (message.equals("exit")) break;
             }
         } catch (IOException e) {
             System.err.println("Error occurred while trying to connect to client: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error occurred while handling the client: " + e.getMessage());
         } finally{}
     }
 }

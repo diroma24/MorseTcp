@@ -11,6 +11,7 @@ import static java.lang.System.out;
 public class Client {
     private static String serverIP = "127.0.0.1";
     private static int serverPort = 9000;
+    private static final MorseTranslator translator = new MorseTranslator();
 
     public static void main(String[] args) {
         int maxTry = 15;
@@ -62,6 +63,10 @@ public class Client {
                 String serverMessage;
                 while ((serverMessage = in.readLine()) != null){
                     System.out.print("\r" + serverMessage + "\n> ");
+                    if (serverMessage.startsWith("Morse: ")){
+                        String code = serverMessage.substring(7);
+                        translator.playMorse(code);
+                    }
                 }
             } catch (IOException e) {
                 System.err.println("Error while reading server message: " + e.getMessage());

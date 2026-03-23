@@ -1,7 +1,16 @@
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.SourceDataLine;
 import java.util.HashMap;
 import java.util.Map;
 
 public class MorseTranslator implements AutoCloseable {
+    private static final int SAMPLE_RATE = 44100;
+    private static final int DOT_DURATION = 100;
+    private static final int DASH_DURATION = DOT_DURATION * 3;
+    private static final int FREQUENCY = 800;
+
     private static final Map<Character, String> morseMap = new HashMap<>();
 
     static {
@@ -62,6 +71,52 @@ public class MorseTranslator implements AutoCloseable {
         }
 
         return result.toString().trim();
+    }
+
+    public void playMorse(String morseCode) {
+        try {
+            AudioFormat af = new AudioFormat(SAMPLE_RATE, 16, 1, true, false);
+            SourceDataLine sdl = AudioSystem.getSourceDataLine(af);
+            sdl.open(af);
+            sdl.start();
+
+            for (char c : morseCode.toCharArray()) {
+                switch (c) {
+                    case '.':
+                        playTone(sdl, DOT_DURATION);
+                        break;
+                    case '-':
+                        playTone(sdl, DASH_DURATION);
+                        break;
+                    case ' ':
+                        Thread.sleep(DOT_DURATION * 2);
+                        break;
+                    case '/':
+                        Thread.sleep(DASH_DURATION * 6);
+                        break;
+                }
+                Thread.sleep(DOT_DURATION);
+            }
+            sdl.drain();
+            sdl.stop();
+            sdl.close();
+        } catch (LineUnavailableException | InterruptedException e) {
+            System.err.println("Error reproduciendo audio: " + e.getMessage());
+        }
+    }
+
+    private void playTone(SourceDataLine sdl,int duration){
+        int lenght = (int) (SAMPLE_RATE * duration / 1000.0);
+        byte[] buffer = new byte[lenght * 2];
+
+        for(int i = 0; i < lenght; i++){
+            double angle = 2.0 * Math.PI * i * FREQUENCY / SAMPLE_RATE;
+            short amplitude = (short) (Math.sin(angle) * Short.MAX_VALUE);
+
+            buffer[2 * i] = (byte) (amplitude & 0xFF);
+            buffer[2 * i + 1] = (byte) ((amplitude >> 8) & 0xFF);
+        }
+        sdl.write(buffer, 0, buffer.length);
     }
 
     @Override
